@@ -23,11 +23,16 @@ module.exports = class Authentication {
             null_username_password: "Username and password is a null value",
             short_username: `Username is too short; it must be at least ${this.options.min_usr_characters} characters long`,
         };
+
+        // Vars:
+        this.errors = [];
+        this.isRunning = false;
     }
 
     async start_server() {
 
         console.log("Starting server...");
+        this.isRunning = true;
 
         app.use(express.json());
         app.use(cookieParser());
@@ -64,8 +69,12 @@ module.exports = class Authentication {
 
     }
 
-    register_secure_page (url, callback) {
-
+    register_secure_pages (data) {
+        for ( let i = 0; i < data.length; i++) {
+            app.get(data[i].route, this.authenticate_token, (req, res) => {
+                res.sendFile(data[i].fileLocation);
+            });
+        }
     }
 
     create_user(username, password) {
@@ -79,22 +88,11 @@ module.exports = class Authentication {
     }
 
     generate_access_token (user) {
-        const token = req.cookies.accessToken;
-
-        // If there is no token in the request return an error and redirect to login
-        if (token == null) return res.sendStatus(401).redirect(this.options.loginUrl);
-
-        jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
-            if (err) {
-                return res.sendStatus(403);
-            }
-            req.user = user;
-            next();
-        })
+        //TODO: Implement this later
     }
 
     authenticate_token(req, res, next) {
-        if (req.cookies.accessToken == null) return res.sendStatus(401).redirect('/login');
+        if (!req.cookies.accessToken || req.cookies.accessToken == null) return res.sendStatus(401).redirect('/login');
     
         jwt.verify(req.cookies.accessToken, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
             if (err) {
@@ -106,10 +104,19 @@ module.exports = class Authentication {
         })
     }
 
+    status() {
+        return {
+            Running: this.isRunning,
+            AuthErrors: this.errors,
+            DBErrors: this.DB.errors
+        }
+    }
+
     handle_error(error, message) {
         console.log(`
         | ${error} | 
         | ${message} |
         `);
+        this.errors.push({error: error, message: message});
     }
 }
