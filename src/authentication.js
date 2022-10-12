@@ -1,12 +1,11 @@
-import DatabaseHandler from './databaseHandler.mjs';
-
+const DatabaseHandler = require('./databaseHandler.js');
 const express = require('express');
 const app = express();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 var cookieParser = require('cookie-parser');
 
-export default class Authentication {
+module.exports = class Authentication {
     constructor (options) {
         this.options = options;
 
@@ -26,11 +25,10 @@ export default class Authentication {
         };
     }
 
-    authenticate_request (request, response, next) {
-
-    }
-
     async start_server() {
+
+        console.log("Starting server...");
+
         app.use(express.json());
         app.use(cookieParser());
 
@@ -60,6 +58,14 @@ export default class Authentication {
             }
         })
 
+        app.listen(this.options.port, () => {
+            console.log(`Server started on port ${this.options.port}`);
+        });
+
+    }
+
+    register_secure_page (url, callback) {
+
     }
 
     create_user(username, password) {
@@ -81,6 +87,19 @@ export default class Authentication {
         jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
             if (err) {
                 return res.sendStatus(403);
+            }
+            req.user = user;
+            next();
+        })
+    }
+
+    authenticate_token(req, res, next) {
+        if (req.cookies.accessToken == null) return res.sendStatus(401).redirect('/login');
+    
+        jwt.verify(req.cookies.accessToken, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+            if (err) {
+                this.handle_error(err, "Failed to authenticate token");
+                return res.sendStatus(403)
             }
             req.user = user;
             next();

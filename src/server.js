@@ -1,4 +1,4 @@
-import Authentication from "authentication.mjs";
+const Authentication = require("./authentication.js");
 
 const express = require('express')
 const app = express()

@@ -2,7 +2,7 @@ const mongo = require('mongodb').MongoClient;
 
 //TODO: Change the .insertOne() to the non depreciated version to ensure the code doesn't break in the future when it is fully removed
 
-export default class DatabaseHandler {
+module.exports = class DatabaseHandler {
     constructor (options) {
         this.options = options;
         mongo.connect(this.options.mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
