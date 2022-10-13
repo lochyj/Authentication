@@ -27,15 +27,15 @@ module.exports = class Authentication {
         // Vars:
         this.errors = [];
         this.isRunning = false;
+
+        // Init functions:
+        app.use(express.json());
+        app.use(cookieParser());
     }
 
     async start_server() {
-
         console.log("Starting server...");
         this.isRunning = true;
-
-        app.use(express.json());
-        app.use(cookieParser());
 
         this.DB = new DatabaseHandler({
             mongoUrl: this.options.mongoUrl,
@@ -51,16 +51,57 @@ module.exports = class Authentication {
                 })
                 return
             }
-            const { username, password } = req.body
+            //TODO: Make
+            // const { username, password } = req.body
+            // const user = users.find(user => user.username === username)
+            // if (user) {
+            //     res.status(400).json({ error: 'Username already exists' })
+            // } else {
+            //     const hash = await bcrypt.hash(password, 10)
+            //     store(username, hash)
+            //     updateUsers()
+            //     res.status(200).json({ message: 'User created' })
+            // }
+        })
+
+        app.post('/auth/login', async(req, res) => {
+            const username = req.body.username
             const user = users.find(user => user.username === username)
             if (user) {
-                res.status(400).json({ error: 'Username already exists' })
+                const password = req.body.password
+                const hash = user.password
+                const isValid = await bcrypt.compare(password, hash)
+                if (isValid) {
+                    const accessToken = generateAccessToken({ name: user.username })
+                    const refreshToken = jwt.sign({ name: user.username }, process.env.REFRESH_TOKEN_SECRET)
+                    this.update_tokens_list(refreshToken);
+                    res.cookie('accessToken', accessToken, { httpOnly: true })
+                    res.cookie('refreshToken', refreshToken, { httpOnly: true })
+                    res.send().status(200)
+                } else {
+                    res.status(400).json({ error: 'Invalid credentials' })
+                }
             } else {
-                const hash = await bcrypt.hash(password, 10)
-                store(username, hash)
-                updateUsers()
-                res.status(200).json({ message: 'User created' })
+                res.status(400).json({ error: 'User does not exist' })
             }
+        })
+
+        app.post('/auth/token', (req, res) => {
+            const refreshToken = req.body.token
+            if (refreshToken == null) return res.sendStatus(401)
+            if (!refreshTokens.includes(refreshToken)) return res.sendStatus(403)
+            jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET, (err, user) => {
+                if (err) return res.sendStatus(403)
+                res.cookie('accessToken', this.generate_access_token({ name: user.name }), { httpOnly: true, overwrite: true })
+            })
+        })
+
+        app.delete('/auth/logout', (req, res) => {
+            if (req.body.token == null || undefined) {
+                res.sendStatus(401);
+            }
+            refreshTokens = refreshTokens.filter(token => token !== req.body.token)
+            res.sendStatus(204)
         })
 
         app.listen(this.options.port, () => {
@@ -92,9 +133,10 @@ module.exports = class Authentication {
     }
 
     authenticate_token(req, res, next) {
-        if (!req.cookies.accessToken || req.cookies.accessToken == null) return res.sendStatus(401).redirect('/login');
+        const token = req.body.accessToken;
+        if (token == undefined || null) return res./*sendStatus(401).*/redirect('/login?redirect=' + req.originalUrl);
     
-        jwt.verify(req.cookies.accessToken, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
+        jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, user) => {
             if (err) {
                 this.handle_error(err, "Failed to authenticate token");
                 return res.sendStatus(403)
