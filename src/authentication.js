@@ -49,19 +49,21 @@ module.exports = class Authentication {
                 res.status(400).json({
                     message: 'Please provide a username and password'
                 })
-                return
+                return;
             }
-            //TODO: Make
-            // const { username, password } = req.body
-            // const user = users.find(user => user.username === username)
-            // if (user) {
-            //     res.status(400).json({ error: 'Username already exists' })
-            // } else {
-            //     const hash = await bcrypt.hash(password, 10)
-            //     store(username, hash)
-            //     updateUsers()
-            //     res.status(200).json({ message: 'User created' })
-            // }
+            const {username, password} = req.body;
+            const user = await this.DB.check_user_in_database(username).then((res)=> {
+                if (res == false) {
+                    this.create_user(username, password);
+                    res.status(200).json({
+                        message: 'User created'
+                    });
+                } else {
+                    res.status(400).json({
+                        message: 'Username already exists'
+                    });
+                }
+            });
         })
 
         app.post('/auth/login', async(req, res) => {
@@ -110,9 +112,17 @@ module.exports = class Authentication {
 
     }
 
-    register_secure_pages (data) {
-        for ( let i = 0; i < data.length; i++) {
+    register_secure_pages(data) {
+        for (let i = 0; i < data.length; i++) {
             app.get(data[i].route, this.authenticate_token, (req, res) => {
+                res.sendFile(data[i].fileLocation);
+            });
+        }
+    }
+
+    register_pages(data) {
+        for (let i = 0; i < data.length; i++) {
+            app.get(data[i].route, options, (req, res) => {
                 res.sendFile(data[i].fileLocation);
             });
         }
@@ -129,7 +139,7 @@ module.exports = class Authentication {
     }
 
     generate_access_token (user) {
-        //TODO: Implement this later
+        return jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: process.env.ACCESS_TOKEN_TIME })
     }
 
     authenticate_token(req, res, next) {

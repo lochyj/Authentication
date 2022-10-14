@@ -35,6 +35,19 @@ module.exports = class DatabaseHandler {
         });
     }
 
+    check_user_in_database() {
+        this.db.collection("users").find({}).toArray((err, res) => {
+            if (err) {
+                this.handle_error(err, "Failed to get user from database");
+            }
+            if (res.length == 0) {
+                return false;
+            } else {
+                return true;
+            }
+        });
+    }
+
     init_db() {
         if (this.get_db_collections_length() == 0) {
             this.db.createCollection("users", (err, res) => {

@@ -5,10 +5,14 @@ var Auth = new Authentication({
 })
 
 Auth.register_secure_pages([
-    {route:"/app", fileLocation:"./app.html"},
-    {route:"/profile", fileLocation: "./profile.html"}
+    {route:"/app", fileLocation:"./pages/secure/app.html"},
+    {route:"/profile", fileLocation: "./pages/secure/profile.html"}
 ]);
 
-Auth.start_server();
+Auth.register_pages([
+    {route:"/login", fileLocation:"./pages/login.html"},
+    {route:"/register", fileLocation: "./pages/register.html"}
+]);
 
-console.log(Auth.status());
+
+Auth.start_server();
