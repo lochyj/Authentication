@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const DatabaseHandler = require('./databaseHandler.js');
 const express = require('express');
 const app = express();
@@ -44,48 +46,52 @@ module.exports = class Authentication {
 
 
         app.post('/auth/register', async(req, res) => {
-            //TODO: Update to be better I guess lol
             if (!req.body.username || !req.body.password) {
                 res.status(400).json({
                     message: 'Please provide a username and password'
                 })
                 return;
-            }
-            const {username, password} = req.body;
-            const user = await this.DB.check_user_in_database(username).then((res)=> {
-                if (res == false) {
+            } else {
+                const {username, password} = req.body;
+                const user = await this.DB.check_user_in_database(username)
+                if (user == false) {
                     this.create_user(username, password);
                     res.status(200).json({
                         message: 'User created'
                     });
                 } else {
-                    res.status(400).json({
+                    res.status(401).json({
                         message: 'Username already exists'
                     });
                 }
-            });
+            }
         })
 
         app.post('/auth/login', async(req, res) => {
-            const username = req.body.username
-            const user = users.find(user => user.username === username)
-            if (user) {
-                const password = req.body.password
-                const hash = user.password
-                const isValid = await bcrypt.compare(password, hash)
+            // TODO: Make this work
+            const username = req.body.username;
+            const result = this.DB.check_user_in_database(username)
+            let a = 0;
+            while (result == undefined){a++}
+            console.log(a);
+            if (result) {
+                const password = req.body.password;
+                const hash = this.DB.get_user_login_data(username).password;
+                const isValid = await bcrypt.compare(password, hash);
                 if (isValid) {
-                    const accessToken = generateAccessToken({ name: user.username })
-                    const refreshToken = jwt.sign({ name: user.username }, process.env.REFRESH_TOKEN_SECRET)
-                    this.update_tokens_list(refreshToken);
-                    res.cookie('accessToken', accessToken, { httpOnly: true })
-                    res.cookie('refreshToken', refreshToken, { httpOnly: true })
-                    res.send().status(200)
+                    const accessToken = generateAccessToken({ name: username });
+                    const refreshToken = jwt.sign({ name: username }, process.env.REFRESH_TOKEN_SECRET);
+                    this.DB.update_tokens_list(refreshToken);
+                    res.cookie('accessToken', accessToken, { httpOnly: true });
+                    res.cookie('refreshToken', refreshToken, { httpOnly: true });
+                    res.send().status(200);
                 } else {
-                    res.status(400).json({ error: 'Invalid credentials' })
+                    res.status(400).json({ error: 'Invalid credentials' });
                 }
             } else {
-                res.status(400).json({ error: 'User does not exist' })
+                res.status(401).json({ error: 'User does not exist' });
             }
+            
         })
 
         app.post('/auth/token', (req, res) => {
@@ -115,15 +121,15 @@ module.exports = class Authentication {
     register_secure_pages(data) {
         for (let i = 0; i < data.length; i++) {
             app.get(data[i].route, this.authenticate_token, (req, res) => {
-                res.sendFile(data[i].fileLocation);
+                res.sendFile(data[i].fileLocation, {root: __dirname});
             });
         }
     }
 
     register_pages(data) {
         for (let i = 0; i < data.length; i++) {
-            app.get(data[i].route, options, (req, res) => {
-                res.sendFile(data[i].fileLocation);
+            app.get(data[i].route, (req, res) => {
+                res.sendFile(data[i].fileLocation, {root: __dirname});
             });
         }
     }

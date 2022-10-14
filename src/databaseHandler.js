@@ -13,16 +13,37 @@ module.exports = class DatabaseHandler {
         });
 
         this.errors = [];
+
+        console.log("DatabaseHandler - Connected to the database at: " + this.options.mongoUrl);
     }
 
     add_user_to_db(username, password) {
         this.db.collection("users").insertOne({
             username: username,
             password: password,
+            firstLogin: new Date().getTime(),
+            lastLogin: new Date().getTime()
         }, (err, res) => {
             if (err) {
                 this.handle_error(err, "Failed to add user to database");
             }
+        });
+    }
+
+    update_user_login_time(username) {
+        this.db.collection("users").updateOne({username: username}, {$set: {lastLogin: new Date().getTime()}}, (err, res) => {
+            if (err) {
+                this.handle_error(err, "Failed to update user login time");
+            }
+        });
+    }
+
+    get_user_login_data(username) {
+        this.db.collection("users").find({username: username}).toArray((err, res) => {
+            if (err) {
+                this.handle_error(err, "Failed to get user data from database");
+            }
+            return res;
         });
     }
 
@@ -35,8 +56,16 @@ module.exports = class DatabaseHandler {
         });
     }
 
-    check_user_in_database() {
-        this.db.collection("users").find({}).toArray((err, res) => {
+    update_tokens_list(token) {
+        this.db.collection("tokens").insertOne({token: token}, (err, res) => {
+            if (err) {
+                this.handle_error(err, "Failed to update tokens list");
+            }
+        });
+    }
+
+    check_user_in_database(username) {
+        this.db.collection("users").find({username: username}).toArray((err, res) => {
             if (err) {
                 this.handle_error(err, "Failed to get user from database");
             }

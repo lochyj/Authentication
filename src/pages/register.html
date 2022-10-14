@@ -86,8 +86,7 @@
                         if (response.status == 200) {
                             window.location.href = "/login";
                         } else {
-                            console.log('Looks like there was a problem. Status Code: ' +
-                                response.status);
+                            console.log('Looks like there was a problem. Status Code: ' + response.status + " | Response text:" + response.statusText);
                             return;
                         }
                     }
