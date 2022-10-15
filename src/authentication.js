@@ -1,3 +1,5 @@
+
+
 require('dotenv').config();
 
 const DatabaseHandler = require('./databaseHandler.js');
@@ -7,6 +9,20 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 var cookieParser = require('cookie-parser');
 
+/**
+ * @brief Authentication module
+ * @param {Object} options
+ * @param {String} options.port - Port to listen on
+ * @param {String} options.db - Database to use
+ * @param {String} options.db_host - Database host
+ * @param {String} options.db_user - Database user
+ * @param {String} options.db_password - Database password
+ * @param {String} options.db_port - Database port
+ * @param {String} options.db_name - Database name
+ * @param {String} options.db_table - Database table
+ * @param {String} options.db_username_field - Database username field
+ * @param {String} options.db_password_field - Database password field
+ */
 module.exports = class Authentication {
     constructor (options) {
         this.options = options;
@@ -45,7 +61,7 @@ module.exports = class Authentication {
         });
 
 
-        app.post('/auth/register', async(req, res) => {
+        app.post('/auth/register', async (req, res) => {
             if (!req.body.username || !req.body.password) {
                 res.status(400).json({
                     message: 'Please provide a username and password'
@@ -53,30 +69,31 @@ module.exports = class Authentication {
                 return;
             } else {
                 const {username, password} = req.body;
-                const user = await this.DB.check_user_in_database(username)
+                const user = this.DB.check_user_in_database(username);
                 if (user == false) {
                     this.create_user(username, password);
                     res.status(200).json({
                         message: 'User created'
                     });
-                } else {
-                    res.status(401).json({
+                } else if(user == true) {
+                    res.status(409).json({
                         message: 'Username already exists'
+                    });
+                } else {
+                    res.status(500).json({
+                        message: 'Internal server error'
                     });
                 }
             }
-        })
+        });
 
-        app.post('/auth/login', async(req, res) => {
+        app.post('/auth/login', async (req, res) => {
             // TODO: Make this work
             const username = req.body.username;
-            const result = this.DB.check_user_in_database(username)
-            let a = 0;
-            while (result == undefined){a++}
-            console.log(a);
+            const result = this.DB.check_user_in_database(username);
             if (result) {
                 const password = req.body.password;
-                const hash = this.DB.get_user_login_data(username).password;
+                const hash = this.DB.get_user_login_data(username);
                 const isValid = await bcrypt.compare(password, hash);
                 if (isValid) {
                     const accessToken = generateAccessToken({ name: username });
@@ -88,11 +105,12 @@ module.exports = class Authentication {
                 } else {
                     res.status(400).json({ error: 'Invalid credentials' });
                 }
+            } else if (!result) {
+                res.status(409).json({ error: 'User does not exist' });
             } else {
-                res.status(401).json({ error: 'User does not exist' });
+                res.status(500).json({ error: 'Internal server error' });
             }
-            
-        })
+        });
 
         app.post('/auth/token', (req, res) => {
             const refreshToken = req.body.token
@@ -102,7 +120,7 @@ module.exports = class Authentication {
                 if (err) return res.sendStatus(403)
                 res.cookie('accessToken', this.generate_access_token({ name: user.name }), { httpOnly: true, overwrite: true })
             })
-        })
+        });
 
         app.delete('/auth/logout', (req, res) => {
             if (req.body.token == null || undefined) {
@@ -110,7 +128,7 @@ module.exports = class Authentication {
             }
             refreshTokens = refreshTokens.filter(token => token !== req.body.token)
             res.sendStatus(204)
-        })
+        });
 
         app.listen(this.options.port, () => {
             console.log(`Server started on port ${this.options.port}`);

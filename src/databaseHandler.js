@@ -1,7 +1,7 @@
 const mongo = require('mongodb').MongoClient;
 
 //TODO: Change the .insertOne() to the non depreciated version to ensure the code doesn't break in the future when it is fully removed
-
+//TODO: USE PROMISES! This is required as the auth system wont wait for the db to respond before continuing, causing the user to not be created or accessed.
 module.exports = class DatabaseHandler {
     constructor (options) {
         this.options = options;
@@ -39,12 +39,14 @@ module.exports = class DatabaseHandler {
     }
 
     get_user_login_data(username) {
+        var result = undefined;
         this.db.collection("users").find({username: username}).toArray((err, res) => {
             if (err) {
                 this.handle_error(err, "Failed to get user data from database");
             }
-            return res;
+            result = res;
         });
+        return result;
     }
 
     get_db_collections_length() {
@@ -65,14 +67,20 @@ module.exports = class DatabaseHandler {
     }
 
     check_user_in_database(username) {
-        this.db.collection("users").find({username: username}).toArray((err, res) => {
-            if (err) {
-                this.handle_error(err, "Failed to get user from database");
-            }
-            if (res.length == 0) {
+        const promise = new Promise((resolve, reject) => {
+            if (reject) this.handle_error(reject, "check_user_in_database promise rejected");
+            resolve(this.db.collection("users").find({username: username}).toArray((err, res) => {
+                if (err) this.handle_error(err, "Failed to get user from database");
+            }));
+        });
+        promise.then ((result) => {
+            if (result == 0) {
                 return false;
-            } else {
+            } else if (result > 0) {
                 return true;
+            } else {
+                this.handle_error("Unknown error", "Failed to check if user is in database");
+                return undefined;
             }
         });
     }
