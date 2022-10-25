@@ -1,29 +1,31 @@
-
-
 require('dotenv').config();
 
 const DatabaseHandler = require('./databaseHandler.js');
+const Logger = require('./logger.js');
 const express = require('express');
 const app = express();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 var cookieParser = require('cookie-parser');
 
-/**
- * @brief Authentication module
- * @param {Object} options
- * @param {String} options.port - Port to listen on
- * @param {String} options.db - Database to use
- * @param {String} options.db_host - Database host
- * @param {String} options.db_user - Database user
- * @param {String} options.db_password - Database password
- * @param {String} options.db_port - Database port
- * @param {String} options.db_name - Database name
- * @param {String} options.db_table - Database table
- * @param {String} options.db_username_field - Database username field
- * @param {String} options.db_password_field - Database password field
- */
+//TODO: Add doc strings to all functions
+
 module.exports = class Authentication {
+    /**
+     * Authentication module
+     * @param {Object} options
+     * @param {String} options.port - Port to listen on.
+     * @param {String} options.db - Database to use.
+     * @param {String} options.db_host - Database host.
+     * @param {String} options.db_user - Database user.
+     * @param {String} options.db_password - Database password.
+     * @param {String} options.db_port - Database port.
+     * @param {String} options.db_name - Database name.
+     * @param {String} options.db_table - Database table.
+     * @param {String} options.db_username_field - Database username field.
+     * @param {String} options.db_password_field - Database password field.
+     * @return
+     */
     constructor (options) {
         this.options = options;
 
@@ -54,6 +56,10 @@ module.exports = class Authentication {
     async start_server() {
         console.log("Starting server...");
         this.isRunning = true;
+
+        this.log = new Logger({
+            debug: true
+        });
 
         this.DB = new DatabaseHandler({
             mongoUrl: this.options.mongoUrl,
